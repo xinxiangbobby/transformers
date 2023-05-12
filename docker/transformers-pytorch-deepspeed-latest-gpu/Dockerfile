@@ -4,7 +4,7 @@ LABEL maintainer="Hugging Face"
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-ARG PYTORCH='2.0.0'
+ARG PYTORCH='2.0.1'
 # Example: `cu102`, `cu113`, etc.
 ARG CUDA='cu117'
 
@@ -21,6 +21,8 @@ RUN git clone https://github.com/huggingface/transformers && cd transformers && 
 RUN python3 -m pip install --no-cache-dir -U torch==$PYTORCH torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/$CUDA
 
 RUN python3 -m pip install --no-cache-dir ./transformers[deepspeed-testing]
+
+RUN python3 -m pip install --no-cache-dir git+https://github.com/huggingface/accelerate@main#egg=accelerate
 
 # Uninstall `torch-tensorrt` shipped with the base image
 RUN python3 -m pip uninstall -y torch-tensorrt
