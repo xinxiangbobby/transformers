@@ -26,9 +26,8 @@ from ...utils import logging
 
 logger = logging.get_logger(__name__)
 
-EFFICIENTNET_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-    "google/efficientnet-b7": "https://huggingface.co/google/efficientnet-b7/resolve/main/config.json",
-}
+
+from ..deprecated._archive_maps import EFFICIENTNET_PRETRAINED_CONFIG_ARCHIVE_MAP  # noqa: F401, E402
 
 
 class EfficientNetConfig(PretrainedConfig):
@@ -60,7 +59,7 @@ class EfficientNetConfig(PretrainedConfig):
             List of output channel sizes to be used in each block for convolutional layers.
         depthwise_padding (`List[int]`, *optional*, defaults to `[]`):
             List of block indices with square padding.
-        strides: (`List[int]`, *optional*, defaults to `[1, 2, 2, 2, 1, 2, 1]`):
+        strides (`List[int]`, *optional*, defaults to `[1, 2, 2, 2, 1, 2, 1]`):
             List of stride sizes to be used in each block for convolutional layers.
         num_block_repeats (`List[int]`, *optional*, defaults to `[1, 2, 2, 3, 3, 4, 1]`):
             List of the number of times each block is to repeated.
@@ -100,6 +99,7 @@ class EfficientNetConfig(PretrainedConfig):
     >>> # Accessing the model configuration
     >>> configuration = model.config
     ```"""
+
     model_type = "efficientnet"
 
     def __init__(

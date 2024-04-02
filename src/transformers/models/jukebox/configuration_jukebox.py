@@ -14,7 +14,6 @@
 # limitations under the License.
 """ Jukebox configuration"""
 
-import copy
 import os
 from typing import List, Union
 
@@ -24,10 +23,9 @@ from ...utils import logging
 
 logger = logging.get_logger(__name__)
 
-JUKEBOX_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-    "openai/jukebox-5b-lyrics": "https://huggingface.co/openai/jukebox-5b-lyrics/blob/main/config.json",
-    "openai/jukebox-1b-lyrics": "https://huggingface.co/openai/jukebox-1b-lyrics/blob/main/config.json",
-}
+
+from ..deprecated._archive_maps import JUKEBOX_PRETRAINED_CONFIG_ARCHIVE_MAP  # noqa: F401, E402
+
 
 _LARGE_ATTENTION = [
     "block_attn",
@@ -353,6 +351,8 @@ class JukeboxPriorConfig(PretrainedConfig):
     def from_pretrained(
         cls, pretrained_model_name_or_path: Union[str, os.PathLike], level=0, **kwargs
     ) -> "PretrainedConfig":
+        cls._set_token_in_kwargs(kwargs)
+
         config_dict, kwargs = cls.get_config_dict(pretrained_model_name_or_path, **kwargs)
 
         # get the prior config dict if we are loading from JukeboxConfig
@@ -366,18 +366,6 @@ class JukeboxPriorConfig(PretrainedConfig):
             )
 
         return cls.from_dict(config_dict, **kwargs)
-
-    def to_dict(self):
-        """
-        Serializes this instance to a Python dictionary. Override the default [`~PretrainedConfig.to_dict`].
-
-        Returns:
-            `Dict[str, any]`: Dictionary of all the attributes that make up this configuration instance,
-        """
-        output = copy.deepcopy(self.__dict__)
-        output["encoder_config"] = self.encoder_config.to_dict() if self.encoder_config is not None else None
-        output["model_type"] = self.__class__.model_type
-        return output
 
 
 class JukeboxVQVAEConfig(PretrainedConfig):
@@ -486,6 +474,8 @@ class JukeboxVQVAEConfig(PretrainedConfig):
 
     @classmethod
     def from_pretrained(cls, pretrained_model_name_or_path: Union[str, os.PathLike], **kwargs) -> "PretrainedConfig":
+        cls._set_token_in_kwargs(kwargs)
+
         config_dict, kwargs = cls.get_config_dict(pretrained_model_name_or_path, **kwargs)
 
         # get the text config dict if we are loading from CLIPConfig
@@ -557,7 +547,6 @@ class JukeboxConfig(PretrainedConfig):
     """
 
     model_type = "jukebox"
-    is_composition = True
 
     def __init__(
         self,
@@ -618,16 +607,7 @@ class JukeboxConfig(PretrainedConfig):
         return cls(prior_config_list=prior_config_list, vqvae_config_dict=vqvae_config.to_dict(), **kwargs)
 
     def to_dict(self):
-        """
-        Serializes this instance to a Python dictionary. Override the default [`~PretrainedConfig.to_dict`].
-
-        Returns:
-            `Dict[str, any]`: Dictionary of all the attributes that make up this configuration instance,
-        """
-        output = copy.deepcopy(self.__dict__)
-        for i, config in enumerate(output.pop("prior_configs")):
-            output[f"prior_{i}"] = config.to_dict()
-
-        output["vqvae_config"] = self.vqvae_config.to_dict()
-        output["model_type"] = self.__class__.model_type
-        return output
+        # Override the default to_dict to apply to_dict to the list of prior configs.
+        result = super().to_dict()
+        result["prior_config_list"] = [config.to_dict() for config in result.pop("prior_configs")]
+        return result

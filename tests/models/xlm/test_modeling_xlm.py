@@ -36,7 +36,6 @@ if is_torch_available():
         XLMModel,
         XLMWithLMHeadModel,
     )
-    from transformers.models.xlm.modeling_xlm import XLM_PRETRAINED_MODEL_ARCHIVE_LIST
 
 
 class XLMModelTester:
@@ -57,7 +56,7 @@ class XLMModelTester:
         vocab_size=99,
         n_special=0,
         hidden_size=32,
-        num_hidden_layers=5,
+        num_hidden_layers=2,
         num_attention_heads=4,
         hidden_dropout_prob=0.1,
         attention_probs_dropout_prob=0.1,
@@ -505,16 +504,16 @@ class XLMModelTest(ModelTesterMixin, GenerationTesterMixin, PipelineTesterMixin,
 
     @slow
     def test_model_from_pretrained(self):
-        for model_name in XLM_PRETRAINED_MODEL_ARCHIVE_LIST[:1]:
-            model = XLMModel.from_pretrained(model_name)
-            self.assertIsNotNone(model)
+        model_name = "FacebookAI/xlm-mlm-en-2048"
+        model = XLMModel.from_pretrained(model_name)
+        self.assertIsNotNone(model)
 
 
 @require_torch
 class XLMModelLanguageGenerationTest(unittest.TestCase):
     @slow
     def test_lm_generate_xlm_mlm_en_2048(self):
-        model = XLMWithLMHeadModel.from_pretrained("xlm-mlm-en-2048")
+        model = XLMWithLMHeadModel.from_pretrained("FacebookAI/xlm-mlm-en-2048")
         model.to(torch_device)
         input_ids = torch.tensor([[14, 447]], dtype=torch.long, device=torch_device)  # the president
         expected_output_ids = [

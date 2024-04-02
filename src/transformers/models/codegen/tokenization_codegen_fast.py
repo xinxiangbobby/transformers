@@ -41,24 +41,6 @@ logger = logging.get_logger(__name__)
 
 VOCAB_FILES_NAMES = {"vocab_file": "vocab.json", "merges_file": "merges.txt", "tokenizer_file": "tokenizer.json"}
 
-PRETRAINED_VOCAB_FILES_MAP = {
-    "vocab_file": {
-        "Salesforce/codegen-350M-mono": "https://huggingface.co/Salesforce/codegen-350M-mono/resolve/main/vocab.json",
-    },
-    "merges_file": {
-        "Salesforce/codegen-350M-mono": "https://huggingface.co/Salesforce/codegen-350M-mono/resolve/main/merges.txt",
-    },
-    "tokenizer_file": {
-        "Salesforce/codegen-350M-mono": (
-            "https://huggingface.co/Salesforce/codegen-350M-mono/resolve/main/tokenizer.json"
-        ),
-    },
-}
-
-PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
-    "Salesforce/codegen-350M-mono": 2048,
-}
-
 
 class CodeGenTokenizerFast(PreTrainedTokenizerFast):
     """
@@ -92,30 +74,26 @@ class CodeGenTokenizerFast(PreTrainedTokenizerFast):
     refer to this superclass for more information regarding those methods.
 
     Args:
-        vocab_file (`str`):
+        vocab_file (`str`, *optional*):
             Path to the vocabulary file.
-        merges_file (`str`):
+        merges_file (`str`, *optional*):
             Path to the merges file.
-        errors (`str`, *optional*, defaults to `"replace"`):
-            Paradigm to follow when decoding bytes to UTF-8. See
-            [bytes.decode](https://docs.python.org/3/library/stdtypes.html#bytes.decode) for more information.
-        unk_token (`str`, *optional*, defaults to `<|endoftext|>`):
+        tokenizer_file (`str`, *optional*):
+            Path to [tokenizers](https://github.com/huggingface/tokenizers) file (generally has a .json extension) that
+            contains everything needed to load the tokenizer.
+        unk_token (`str`, *optional*, defaults to `"<|endoftext|>"`):
             The unknown token. A token that is not in the vocabulary cannot be converted to an ID and is set to be this
             token instead.
-        bos_token (`str`, *optional*, defaults to `<|endoftext|>`):
+        bos_token (`str`, *optional*, defaults to `"<|endoftext|>"`):
             The beginning of sequence token.
-        eos_token (`str`, *optional*, defaults to `<|endoftext|>`):
+        eos_token (`str`, *optional*, defaults to `"<|endoftext|>"`):
             The end of sequence token.
         add_prefix_space (`bool`, *optional*, defaults to `False`):
             Whether or not to add an initial space to the input. This allows to treat the leading word just as any
             other word. (CodeGen tokenizer detect beginning of words by the preceding space).
-        trim_offsets (`bool`, *optional*, defaults to `True`):
-            Whether or not the post-processing step should trim offsets to avoid including whitespaces.
     """
 
     vocab_files_names = VOCAB_FILES_NAMES
-    pretrained_vocab_files_map = PRETRAINED_VOCAB_FILES_MAP
-    max_model_input_sizes = PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES
     model_input_names = ["input_ids", "attention_mask"]
     slow_tokenizer_class = CodeGenTokenizer
 
@@ -144,7 +122,7 @@ class CodeGenTokenizerFast(PreTrainedTokenizerFast):
         if kwargs.pop("add_bos_token", False):
             model_id = kwargs.pop("name_or_path", "")
             raise ValueError(
-                "Currenty GPT2's fast tokenizer does NOT support adding a BOS token."
+                "Currenty GPT2's fast tokenizer does NOT support adding a BOS token. "
                 "Instead you should use GPT2's slow tokenizer class `CodeGenTokenizer` as follows: \n"
                 f"`CodeGenTokenizer.from_pretrained('{model_id}')`\nor\n"
                 f"`AutoTokenizer.from_pretrained('{model_id}', use_fast=False)`\n"

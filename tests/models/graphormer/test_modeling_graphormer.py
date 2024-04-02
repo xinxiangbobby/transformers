@@ -34,7 +34,6 @@ if is_torch_available():
     from torch import tensor
 
     from transformers import GraphormerForGraphClassification, GraphormerModel
-    from transformers.models.graphormer.modeling_graphormer import GRAPHORMER_PRETRAINED_MODEL_ARCHIVE_LIST
 
 
 class GraphormerModelTester:
@@ -42,22 +41,22 @@ class GraphormerModelTester:
         self,
         parent,
         num_classes=1,
-        num_atoms=512 * 9,
-        num_edges=512 * 3,
-        num_in_degree=512,
-        num_out_degree=512,
-        num_spatial=512,
-        num_edge_dis=128,
+        num_atoms=32 * 9,
+        num_edges=32 * 3,
+        num_in_degree=32,
+        num_out_degree=32,
+        num_spatial=32,
+        num_edge_dis=16,
         multi_hop_max_dist=5,  # sometimes is 20
-        spatial_pos_max=1024,
+        spatial_pos_max=32,
         edge_type="multi_hop",
         init_fn=None,
-        max_nodes=512,
+        max_nodes=32,
         share_input_output_embed=False,
-        num_hidden_layers=12,
-        embedding_dim=768,
-        ffn_embedding_dim=768,
-        num_attention_heads=32,
+        num_hidden_layers=2,
+        embedding_dim=32,
+        ffn_embedding_dim=32,
+        num_attention_heads=4,
         dropout=0.1,
         attention_dropout=0.1,
         activation_dropout=0.1,
@@ -332,6 +331,17 @@ class GraphormerModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCa
                 self.assertTrue(found_buffer)
                 model_buffers.pop(i)
 
+            model_buffers = list(model.buffers())
+            for non_persistent_buffer in non_persistent_buffers.values():
+                found_buffer = False
+                for i, model_buffer in enumerate(model_buffers):
+                    if torch.equal(non_persistent_buffer, model_buffer):
+                        found_buffer = True
+                        break
+
+                self.assertTrue(found_buffer)
+                model_buffers.pop(i)
+
             models_equal = True
             for layer_name, p1 in model_state_dict.items():
                 if layer_name in loaded_model_state_dict:
@@ -461,9 +471,9 @@ class GraphormerModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCa
 
     @slow
     def test_model_from_pretrained(self):
-        for model_name in GRAPHORMER_PRETRAINED_MODEL_ARCHIVE_LIST[:1]:
-            model = GraphormerForGraphClassification.from_pretrained(model_name)
-            self.assertIsNotNone(model)
+        model_name = "clefourrier/graphormer-base-pcqm4mv1"
+        model = GraphormerForGraphClassification.from_pretrained(model_name)
+        self.assertIsNotNone(model)
 
 
 @require_torch

@@ -20,12 +20,8 @@ from ...utils import logging
 
 logger = logging.get_logger(__name__)
 
-DECISION_TRANSFORMER_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-    "edbeeching/decision-transformer-gym-hopper-medium": (
-        "https://huggingface.co/edbeeching/decision-transformer-gym-hopper-medium/resolve/main/config.json"
-    ),
-    # See all DecisionTransformer models at https://huggingface.co/models?filter=decision_transformer
-}
+
+from ..deprecated._archive_maps import DECISION_TRANSFORMER_PRETRAINED_CONFIG_ARCHIVE_MAP  # noqa: F401, E402
 
 
 class DecisionTransformerConfig(PretrainedConfig):
@@ -57,9 +53,9 @@ class DecisionTransformerConfig(PretrainedConfig):
         n_positions (`int`, *optional*, defaults to 1024):
             The maximum sequence length that this model might ever be used with. Typically set this to something large
             just in case (e.g., 512 or 1024 or 2048).
-        n_layer (`int`, *optional*, defaults to 12):
+        n_layer (`int`, *optional*, defaults to 3):
             Number of hidden layers in the Transformer encoder.
-        n_head (`int`, *optional*, defaults to 12):
+        n_head (`int`, *optional*, defaults to 1):
             Number of attention heads for each attention layer in the Transformer encoder.
         n_inner (`int`, *optional*):
             Dimensionality of the inner feed-forward layers. If unset, will default to 4 times `n_embd`.

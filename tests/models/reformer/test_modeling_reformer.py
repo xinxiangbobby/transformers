@@ -20,6 +20,7 @@ from transformers.testing_utils import (
     require_sentencepiece,
     require_tokenizers,
     require_torch,
+    require_torch_fp16,
     require_torch_multi_gpu,
     slow,
     torch_device,
@@ -36,7 +37,6 @@ if is_torch_available():
     from torch import nn
 
     from transformers import (
-        REFORMER_PRETRAINED_MODEL_ARCHIVE_LIST,
         ReformerForMaskedLM,
         ReformerForQuestionAnswering,
         ReformerForSequenceClassification,
@@ -563,12 +563,12 @@ class ReformerTesterMixin:
         config_and_inputs = self.model_tester.prepare_config_and_inputs()
         self.model_tester.create_and_check_reformer_random_seed(*config_and_inputs)
 
-    @unittest.skipIf(torch_device == "cpu", "Cant do half precision")
+    @require_torch_fp16
     def test_reformer_model_fp16_forward(self):
         config_and_inputs = self.model_tester.prepare_config_and_inputs()
         self.model_tester.create_and_check_reformer_model_fp16_forward(*config_and_inputs)
 
-    @unittest.skipIf(torch_device == "cpu", "Cant do half precision")
+    @require_torch_fp16
     def test_reformer_model_fp16_generate(self):
         config_and_inputs = self.model_tester.prepare_config_and_inputs()
         self.model_tester.create_and_check_reformer_model_fp16_generate(*config_and_inputs)
@@ -615,9 +615,9 @@ class ReformerLocalAttnModelTest(ReformerTesterMixin, GenerationTesterMixin, Mod
 
     @slow
     def test_model_from_pretrained(self):
-        for model_name in REFORMER_PRETRAINED_MODEL_ARCHIVE_LIST[:1]:
-            model = ReformerModelWithLMHead.from_pretrained(model_name)
-            self.assertIsNotNone(model)
+        model_name = "google/reformer-crime-and-punishment"
+        model = ReformerModelWithLMHead.from_pretrained(model_name)
+        self.assertIsNotNone(model)
 
     def _check_attentions_for_generate(
         self, batch_size, attentions, min_length, max_length, config, use_cache=False, num_beam_groups=1
@@ -681,6 +681,10 @@ class ReformerLocalAttnModelTest(ReformerTesterMixin, GenerationTesterMixin, Mod
                 [layer_hidden_states.shape for layer_hidden_states in iter_hidden_states],
                 [expected_shape] * len(iter_hidden_states),
             )
+
+    @unittest.skip("The model doesn't support left padding")  # and it's not used enough to be worth fixing :)
+    def test_left_padding_compatibility(self):
+        pass
 
 
 @require_torch
@@ -831,8 +835,16 @@ class ReformerLSHAttnModelTest(
                 [expected_shape] * len(iter_hidden_states),
             )
 
+    @unittest.skip("Fails because the sequence length is not a multiple of 4")
     def test_problem_types(self):
-        # Fails because the sequence length is not a multiple of 4
+        pass
+
+    @unittest.skip("Fails because the sequence length is not a multiple of 4")
+    def test_past_key_values_format(self):
+        pass
+
+    @unittest.skip("The model doesn't support left padding")  # and it's not used enough to be worth fixing :)
+    def test_left_padding_compatibility(self):
         pass
 
 

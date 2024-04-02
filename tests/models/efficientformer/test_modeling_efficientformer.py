@@ -15,12 +15,11 @@
 """ Testing suite for the PyTorch EfficientFormer model. """
 
 
-import inspect
 import unittest
 import warnings
+from typing import List
 
 from transformers import EfficientFormerConfig
-from transformers.models.auto import get_values
 from transformers.testing_utils import require_torch, require_vision, slow, torch_device
 from transformers.utils import cached_property, is_torch_available, is_vision_available
 
@@ -33,14 +32,13 @@ if is_torch_available():
     import torch
 
     from transformers import (
-        MODEL_FOR_IMAGE_CLASSIFICATION_MAPPING,
-        MODEL_MAPPING,
         EfficientFormerForImageClassification,
         EfficientFormerForImageClassificationWithTeacher,
         EfficientFormerModel,
     )
-    from transformers.models.efficientformer.modeling_efficientformer import (
-        EFFICIENTFORMER_PRETRAINED_MODEL_ARCHIVE_LIST,
+    from transformers.models.auto.modeling_auto import (
+        MODEL_FOR_IMAGE_CLASSIFICATION_MAPPING_NAMES,
+        MODEL_MAPPING_NAMES,
     )
 
 
@@ -55,15 +53,16 @@ class EfficientFormerModelTester:
         self,
         parent,
         batch_size: int = 13,
-        image_size: int = 224,
+        image_size: int = 64,
         patch_size: int = 2,
-        embed_dim: int = 48,  # last embed dim of stem
+        embed_dim: int = 3,
         num_channels: int = 3,
         is_training: bool = True,
         use_labels: bool = True,
-        hidden_size: int = 448,
-        num_hidden_layers: int = 7,  # For the l1
-        num_attention_heads: int = 8,
+        hidden_size: int = 128,
+        hidden_sizes=[16, 32, 64, 128],
+        num_hidden_layers: int = 7,
+        num_attention_heads: int = 4,
         intermediate_size: int = 37,
         hidden_act: str = "gelu",
         hidden_dropout_prob: float = 0.1,
@@ -71,7 +70,11 @@ class EfficientFormerModelTester:
         type_sequence_label_size: int = 10,
         initializer_range: float = 0.02,
         encoder_stride: int = 2,
-        num_attention_outputs: int = 1,  # For l1
+        num_attention_outputs: int = 1,
+        dim: int = 128,
+        depths: List[int] = [2, 2, 2, 2],
+        resolution: int = 2,
+        mlp_expansion_ratio: int = 2,
     ):
         self.parent = parent
         self.batch_size = batch_size
@@ -93,6 +96,11 @@ class EfficientFormerModelTester:
         self.num_attention_outputs = num_attention_outputs
         self.embed_dim = embed_dim
         self.seq_length = embed_dim + 1
+        self.resolution = resolution
+        self.depths = depths
+        self.hidden_sizes = hidden_sizes
+        self.dim = dim
+        self.mlp_expansion_ratio = mlp_expansion_ratio
 
     def prepare_config_and_inputs(self):
         pixel_values = floats_tensor([self.batch_size, self.num_channels, self.image_size, self.image_size])
@@ -119,6 +127,11 @@ class EfficientFormerModelTester:
             is_decoder=False,
             initializer_range=self.initializer_range,
             encoder_stride=self.encoder_stride,
+            resolution=self.resolution,
+            depths=self.depths,
+            hidden_sizes=self.hidden_sizes,
+            dim=self.dim,
+            mlp_expansion_ratio=self.mlp_expansion_ratio,
         )
 
     def create_and_check_model(self, config, pixel_values, labels):
@@ -175,7 +188,7 @@ class EfficientFormerModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.T
     )
     pipeline_model_mapping = (
         {
-            "feature-extraction": EfficientFormerModel,
+            "image-feature-extraction": EfficientFormerModel,
             "image-classification": (
                 EfficientFormerForImageClassification,
                 EfficientFormerForImageClassificationWithTeacher,
@@ -206,18 +219,6 @@ class EfficientFormerModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.T
     @unittest.skip(reason="EfficientFormer does not support input and output embeddings")
     def test_model_common_attributes(self):
         pass
-
-    def test_forward_signature(self):
-        config, _ = self.model_tester.prepare_config_and_inputs_for_common()
-
-        for model_class in self.all_model_classes:
-            model = model_class(config)
-            signature = inspect.signature(model.forward)
-            # signature.parameters is an OrderedDict => so arg_names order is deterministic
-            arg_names = [*signature.parameters.keys()]
-
-            expected_arg_names = ["pixel_values"]
-            self.assertListEqual(arg_names[:1], expected_arg_names)
 
     def test_hidden_states_output(self):
         def check_hidden_states_output(inputs_dict, config, model_class):
@@ -305,7 +306,7 @@ class EfficientFormerModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.T
         for model_class in self.all_model_classes:
             # EfficientFormerForImageClassificationWithTeacher supports inference-only
             if (
-                model_class in get_values(MODEL_MAPPING)
+                model_class.__name__ in MODEL_MAPPING_NAMES.values()
                 or model_class.__name__ == "EfficientFormerForImageClassificationWithTeacher"
             ):
                 continue
@@ -327,9 +328,9 @@ class EfficientFormerModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.T
 
         for model_class in self.all_model_classes:
             if (
-                model_class
+                model_class.__name__
                 not in [
-                    *get_values(MODEL_FOR_IMAGE_CLASSIFICATION_MAPPING),
+                    *MODEL_FOR_IMAGE_CLASSIFICATION_MAPPING_NAMES.values(),
                 ]
                 or model_class.__name__ == "EfficientFormerForImageClassificationWithTeacher"
             ):
@@ -367,9 +368,9 @@ class EfficientFormerModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.T
 
     @slow
     def test_model_from_pretrained(self):
-        for model_name in EFFICIENTFORMER_PRETRAINED_MODEL_ARCHIVE_LIST[:1]:
-            model = EfficientFormerModel.from_pretrained(model_name)
-            self.assertIsNotNone(model)
+        model_name = "snap-research/efficientformer-l1-300"
+        model = EfficientFormerModel.from_pretrained(model_name)
+        self.assertIsNotNone(model)
 
     def test_attention_outputs(self):
         config, inputs_dict = self.model_tester.prepare_config_and_inputs_for_common()
@@ -379,6 +380,7 @@ class EfficientFormerModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.T
         encoder_seq_length = getattr(self.model_tester, "encoder_seq_length", seq_len)
         encoder_key_length = getattr(self.model_tester, "key_length", encoder_seq_length)
         chunk_length = getattr(self.model_tester, "chunk_length", None)
+
         if chunk_length is not None and hasattr(self.model_tester, "num_hashes"):
             encoder_seq_length = encoder_seq_length * self.model_tester.num_hashes
 
@@ -427,7 +429,7 @@ def prepare_img():
 @require_vision
 class EfficientFormerModelIntegrationTest(unittest.TestCase):
     @cached_property
-    def default_feature_extractor(self):
+    def default_image_processor(self):
         return (
             EfficientFormerImageProcessor.from_pretrained("snap-research/efficientformer-l1-300")
             if is_vision_available()
@@ -440,9 +442,9 @@ class EfficientFormerModelIntegrationTest(unittest.TestCase):
             torch_device
         )
 
-        feature_extractor = self.default_feature_extractor
+        image_processor = self.default_image_processor
         image = prepare_img()
-        inputs = feature_extractor(images=image, return_tensors="pt").to(torch_device)
+        inputs = image_processor(images=image, return_tensors="pt").to(torch_device)
 
         # forward pass
         with torch.no_grad():
@@ -461,9 +463,9 @@ class EfficientFormerModelIntegrationTest(unittest.TestCase):
             "snap-research/efficientformer-l1-300"
         ).to(torch_device)
 
-        feature_extractor = self.default_feature_extractor
+        image_processor = self.default_image_processor
         image = prepare_img()
-        inputs = feature_extractor(images=image, return_tensors="pt").to(torch_device)
+        inputs = image_processor(images=image, return_tensors="pt").to(torch_device)
 
         # forward pass
         with torch.no_grad():

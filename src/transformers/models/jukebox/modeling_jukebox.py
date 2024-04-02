@@ -33,11 +33,8 @@ from .configuration_jukebox import ATTENTION_PATTERNS, JukeboxConfig, JukeboxPri
 
 logger = logging.get_logger(__name__)
 
-JUKEBOX_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "openai/jukebox-1b-lyrics",
-    "openai/jukebox-5b-lyrics",
-    # See all Jukebox models at https://huggingface.co/models?filter=jukebox
-]
+
+from ..deprecated._archive_maps import JUKEBOX_PRETRAINED_MODEL_ARCHIVE_LIST  # noqa: F401, E402
 
 
 def filter_logits(logits, top_k=0, top_p=0.0, filter_value=-float("Inf")):
@@ -602,7 +599,6 @@ Ringer, Tom Ash, John Hughes, David MacLeod, Jamie Dougherty](https://arxiv.org/
 class JukeboxVQVAE(PreTrainedModel):
     config_class = JukeboxVQVAEConfig
     base_model_prefix = "vqvae"
-    _keys_to_ignore_on_load_unexpected = [r"priors"]
 
     def _init_weights(self, module):
         if isinstance(module, nn.Embedding):  # embed_tokens
@@ -1792,7 +1788,6 @@ class JukeboxPrior(PreTrainedModel):
     """
 
     config_class = JukeboxPriorConfig
-    _keys_to_ignore_on_load_unexpected = ["vqvae"]
 
     def _init_weights(self, module):
         init_scale = self.config.init_scale
@@ -1832,7 +1827,6 @@ class JukeboxPrior(PreTrainedModel):
         self.level = level if level is not None else config.level
 
         self.base_model_prefix = f"priors.{self.level}"
-        self._keys_to_ignore_on_load_unexpected += [r"priors.[^%d]." % self.level]
 
         self.n_ctx = config.n_ctx
 

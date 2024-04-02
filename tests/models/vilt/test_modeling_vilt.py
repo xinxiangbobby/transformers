@@ -20,7 +20,6 @@ from datasets import load_dataset
 from packaging import version
 
 from transformers import ViltConfig, is_torch_available, is_vision_available
-from transformers.models.auto import get_values
 from transformers.testing_utils import require_torch, require_vision, slow, torch_device
 from transformers.utils import cached_property
 
@@ -33,7 +32,6 @@ if is_torch_available():
     import torch
 
     from transformers import (
-        MODEL_MAPPING,
         ViltForImageAndTextRetrieval,
         ViltForImagesAndTextClassification,
         ViltForMaskedLM,
@@ -41,10 +39,7 @@ if is_torch_available():
         ViltForTokenClassification,
         ViltModel,
     )
-    from transformers.models.vilt.modeling_vilt import VILT_PRETRAINED_MODEL_ARCHIVE_LIST
-    from transformers.pytorch_utils import is_torch_greater_or_equal_than_1_10
-else:
-    is_torch_greater_or_equal_than_1_10 = False
+    from transformers.models.auto.modeling_auto import MODEL_MAPPING_NAMES
 
 if is_vision_available():
     import PIL
@@ -68,7 +63,7 @@ class ViltModelTester:
         use_labels=True,
         vocab_size=99,
         hidden_size=32,
-        num_hidden_layers=5,
+        num_hidden_layers=2,
         num_attention_heads=4,
         intermediate_size=37,
         hidden_act="gelu",
@@ -218,7 +213,6 @@ class ViltModelTester:
 
 
 @require_torch
-@unittest.skipIf(not is_torch_greater_or_equal_than_1_10, "Vilt is only available in torch v1.10+")
 class ViltModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
     all_model_classes = (
         (
@@ -232,13 +226,14 @@ class ViltModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
         else ()
     )
     pipeline_model_mapping = (
-        {"feature-extraction": ViltModel, "visual-question-answering": ViltForQuestionAnswering}
+        {"image-feature-extraction": ViltModel, "visual-question-answering": ViltForQuestionAnswering}
         if is_torch_available()
         else {}
     )
     test_pruning = False
     test_headmasking = False
     test_torchscript = False
+    model_split_percents = [0.5, 0.8, 0.9]
 
     # ViltForMaskedLM, ViltForQuestionAnswering and ViltForImagesAndTextClassification require special treatment
     def _prepare_for_class(self, inputs_dict, model_class, return_labels=False):
@@ -287,7 +282,7 @@ class ViltModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
                 config.modality_type_vocab_size = 3
 
             # ViltForImageAndTextRetrieval doesn't support training for now
-            if model_class in [*get_values(MODEL_MAPPING), ViltForImageAndTextRetrieval]:
+            if model_class.__name__ in [*MODEL_MAPPING_NAMES.values(), "ViltForImageAndTextRetrieval"]:
                 continue
 
             model = model_class(config)
@@ -310,7 +305,7 @@ class ViltModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
 
             # ViltForImageAndTextRetrieval doesn't support training for now
             if (
-                model_class in [*get_values(MODEL_MAPPING), ViltForImageAndTextRetrieval]
+                model_class.__name__ in [*MODEL_MAPPING_NAMES.values(), "ViltForImageAndTextRetrieval"]
                 or not model_class.supports_gradient_checkpointing
             ):
                 continue
@@ -324,6 +319,18 @@ class ViltModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
             loss.backward()
 
     @unittest.skip(
+        reason="This architecure seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
+    )
+    def test_training_gradient_checkpointing_use_reentrant(self):
+        pass
+
+    @unittest.skip(
+        reason="This architecure seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
+    )
+    def test_training_gradient_checkpointing_use_reentrant_false(self):
+        pass
+
+    @unittest.skip(
         reason="""VilT samples image tokens from a multinomial distribution, resulting in not deterministic
                             hidden states"""
     )
@@ -335,6 +342,12 @@ class ViltModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
                             hidden states"""
     )
     def test_determinism(self):
+        pass
+
+    @unittest.skip(
+        "VilT samples image tokens from a multinomial distribution, resulting in not deterministic hidden states"
+    )
+    def test_batching_equivalence(self):
         pass
 
     @unittest.skip(
@@ -514,13 +527,12 @@ class ViltModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
 
     @slow
     def test_model_from_pretrained(self):
-        for model_name in VILT_PRETRAINED_MODEL_ARCHIVE_LIST[:1]:
-            model = ViltModel.from_pretrained(model_name)
-            self.assertIsNotNone(model)
+        model_name = "dandelin/vilt-b32-mlm"
+        model = ViltModel.from_pretrained(model_name)
+        self.assertIsNotNone(model)
 
 
 @require_torch
-@unittest.skipIf(not is_torch_greater_or_equal_than_1_10, "Vilt is only available in torch v1.10+")
 class ViltForImagesAndTextClassificationModelTest(ViltModelTest, unittest.TestCase):
     all_model_classes = (ViltForImagesAndTextClassification,) if is_torch_available() else ()
 
@@ -545,7 +557,6 @@ def prepare_img():
 
 @require_torch
 @require_vision
-@unittest.skipIf(not is_torch_greater_or_equal_than_1_10, "Vilt is only available in torch v1.10+")
 class ViltModelIntegrationTest(unittest.TestCase):
     @cached_property
     def default_processor(self):
