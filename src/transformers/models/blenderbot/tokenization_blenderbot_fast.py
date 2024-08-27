@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Fast Tokenization class for Blenderbot."""
+
 import json
 from typing import List, Optional, Tuple
 
@@ -286,24 +287,3 @@ class BlenderbotTokenizerFast(PreTrainedTokenizerFast):
             `List[int]`: list of [input IDs](../glossary#input-ids) with the appropriate special tokens.
         """
         return token_ids_0 + [self.eos_token_id]
-
-    @property
-    # Copied from transformers.models.blenderbot.tokenization_blenderbot.BlenderbotTokenizer.default_chat_template
-    def default_chat_template(self):
-        """
-        A very simple chat template that just adds whitespace between messages.
-        """
-        logger.warning_once(
-            "\nNo chat template is defined for this tokenizer - using the default template "
-            f"for the {self.__class__.__name__} class. If the default is not appropriate for "
-            "your model, please set `tokenizer.chat_template` to an appropriate template. "
-            "See https://huggingface.co/docs/transformers/main/chat_templating for more information.\n"
-        )
-        return (
-            "{% for message in messages %}"
-            "{% if message['role'] == 'user' %}{{ ' ' }}{% endif %}"
-            "{{ message['content'] }}"
-            "{% if not loop.last %}{{ '  ' }}{% endif %}"
-            "{% endfor %}"
-            "{{ eos_token }}"
-        )

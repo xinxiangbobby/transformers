@@ -36,9 +36,10 @@ if is_torch_available():
         FlaubertModel,
         FlaubertWithLMHeadModel,
     )
+    from transformers.models.flaubert.modeling_flaubert import create_sinusoidal_embeddings
 
 
-class FlaubertModelTester(object):
+class FlaubertModelTester:
     def __init__(
         self,
         parent,
@@ -431,6 +432,14 @@ class FlaubertModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase
         config_and_inputs = self.model_tester.prepare_config_and_inputs()
         self.model_tester.create_and_check_flaubert_model(*config_and_inputs)
 
+    # Copied from tests/models/distilbert/test_modeling_distilbert.py with Distilbert->Flaubert
+    def test_flaubert_model_with_sinusoidal_encodings(self):
+        config = FlaubertConfig(sinusoidal_embeddings=True)
+        model = FlaubertModel(config=config)
+        sinusoidal_pos_embds = torch.empty((config.max_position_embeddings, config.emb_dim), dtype=torch.float32)
+        create_sinusoidal_embeddings(config.max_position_embeddings, config.emb_dim, sinusoidal_pos_embds)
+        self.model_tester.parent.assertTrue(torch.equal(model.position_embeddings.weight, sinusoidal_pos_embds))
+
     def test_flaubert_lm_head(self):
         config_and_inputs = self.model_tester.prepare_config_and_inputs()
         self.model_tester.create_and_check_flaubert_lm_head(*config_and_inputs)
@@ -468,7 +477,7 @@ class FlaubertModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase
         for model_class in self.all_model_classes:
             # FlauBertForMultipleChoice behaves incorrectly in JIT environments.
             if model_class == FlaubertForMultipleChoice:
-                return
+                self.skipTest(reason="FlauBertForMultipleChoice behaves incorrectly in JIT environments.")
 
             config.torchscript = True
             model = model_class(config=config)
